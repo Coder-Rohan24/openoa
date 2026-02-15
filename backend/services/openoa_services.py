@@ -105,10 +105,10 @@ def prepare_plant_data(scada_df: pd.DataFrame, meter_df: pd.DataFrame) -> PlantD
 
 def run_aep_analysis(scada_df: pd.DataFrame, meter_df: pd.DataFrame) -> Dict[str, any]:
     """
-    Run Annual Energy Production (AEP) analysis based on meter data.
+    Run Annual Energy Production (AEP) analysis using OpenOA's MonteCarloAEP.
     
-    This function performs a simplified AEP analysis using meter energy data
-    and applies Monte Carlo simulation for uncertainty quantification.
+    This function uses the full OpenOA library to perform wind plant performance analysis
+    with Monte Carlo simulation for uncertainty quantification.
     
     Args:
         scada_df: DataFrame containing SCADA data
@@ -123,48 +123,153 @@ def run_aep_analysis(scada_df: pd.DataFrame, meter_df: pd.DataFrame) -> Dict[str
     Raises:
         ValueError: If input data is invalid or analysis fails
     """
-    logger.info("Starting simplified AEP analysis")
+    logger.info("Starting OpenOA Monte Carlo AEP analysis")
     
     try:
-        # Validate input data
-        if 'energy' not in meter_df.columns:
-            raise ValueError("Meter data must contain 'energy' column")
+        # Validate required columns
+        required_scada_cols = ['timestamp', 'wind_speed', 'power']
+        required_meter_cols = ['timestamp', 'energy']
         
-        # Calculate total energy from meter data (kWh)
-        total_energy_kwh = meter_df['energy'].sum()
+        missing_scada = [col for col in required_scada_cols if col not in scada_df.columns]
+        missing_meter = [col for col in required_meter_cols if col not in meter_df.columns]
         
-        # Convert to MWh
-        total_energy_mwh = total_energy_kwh / 1000
+        if missing_scada:
+            raise ValueError(f"Missing required SCADA columns: {missing_scada}")
+        if missing_meter:
+            raise ValueError(f"Missing required meter columns: {missing_meter}")
         
-        logger.info(f"Total energy from meter data: {total_energy_mwh:.2f} MWh")
+        # Create copies to avoid modifying originals
+        scada_data = scada_df.copy()
+        meter_data = meter_df.copy()
         
-        # Determine the time period covered by the data
-        meter_df_copy = meter_df.copy()
-        meter_df_copy['timestamp'] = pd.to_datetime(meter_df_copy['timestamp'])
-        time_range = (meter_df_copy['timestamp'].max() - meter_df_copy['timestamp'].min()).total_seconds() / (365.25 * 24 * 3600)
+        # Convert timestamps
+        scada_data['timestamp'] = pd.to_datetime(scada_data['timestamp'])
+        meter_data['timestamp'] = pd.to_datetime(meter_data['timestamp'])
         
-        # Annualize the energy production
-        if time_range > 0:
-            annual_energy = total_energy_mwh / time_range
-        else:
-            annual_energy = total_energy_mwh
+        # Add asset_id if not present
+        if 'asset_id' not in scada_data.columns:
+            scada_data['asset_id'] = 'turbine_01'
         
-        logger.info(f"Data covers {time_range:.2f} years, annualized energy: {annual_energy:.2f} MWh")
+        # Rename to OpenOA standard format for SCADA
+        scada_data = scada_data.rename(columns={
+            'timestamp': 'time',
+            'wind_speed': 'WMET_HorWdSpd',
+            'power': 'WTUR_W'
+        })
         
-        # Generate Monte Carlo samples with uncertainty
-        # Assume +/- 10% uncertainty for simplified analysis
-        num_sim = 50
-        uncertainty = 0.10  # 10% uncertainty
+        # Rename meter data  
+        meter_data = meter_data.rename(columns={
+            'timestamp': 'time',
+            'energy': 'MMTR_SupWh'
+        })
         
-        # Generate samples using normal distribution
-        samples = np.random.normal(
-            loc=annual_energy,
-            scale=annual_energy * uncertainty,
-            size=num_sim
+        logger.info(f"Prepared SCADA: {len(scada_data)} rows, Meter: {len(meter_data)} rows")
+        
+        # Generate curtailment data (required by OpenOA)
+        # Using meter timestamps and assuming no losses for simplified analysis
+        curtail_data = pd.DataFrame({
+            'time': meter_data['time'].copy(),
+            'IAVL_DnWh': 0.0,  # Availability losses (kWh)
+            'IAVL_ExtPwrDnWh': 0.0  # Curtailment losses (kWh)
+        })
+        
+        logger.info(f"Created curtailment data: {len(curtail_data)} rows")
+        
+        # Generate hourly reanalysis data from SCADA
+        # Resample to hourly frequency (OpenOA expects hourly reanalysis)
+        scada_hourly = scada_data[['time', 'WMET_HorWdSpd']].copy()
+        scada_hourly_resampled = scada_hourly.set_index('time').resample('1h').agg({
+            'WMET_HorWdSpd': 'mean'
+        })
+        
+        # Fill any NaN values with mean
+        scada_hourly_resampled['WMET_HorWdSpd'] = scada_hourly_resampled['WMET_HorWdSpd'].fillna(
+            scada_hourly_resampled['WMET_HorWdSpd'].mean()
         )
         
-        # Ensure all samples are positive
-        samples = np.maximum(samples, 0)
+        # Create reanalysis DataFrame matching OpenOA's expected structure
+        reanalysis_data = pd.DataFrame({
+            'datetime': scada_hourly_resampled.index,
+            'WMETR_HorWdSpd': scada_hourly_resampled['WMET_HorWdSpd'].values,
+            'WMETR_HorWdDir': 180.0,  # Default wind direction (degrees)
+            'WMETR_AirDen': 1.225  # Standard air density (kg/m³)
+        })
+        
+        # Set DatetimeIndex (OpenOA requires this)
+        reanalysis_data = reanalysis_data.set_index(pd.DatetimeIndex(reanalysis_data['datetime']))
+        
+        # Use asfreq to ensure consistent hourly frequency
+        reanalysis_data = reanalysis_data.asfreq('1h')
+        
+        # Reset datetime column from index after asfreq
+        reanalysis_data['datetime'] = reanalysis_data.index
+        
+        logger.info(f"Created reanalysis data: {len(reanalysis_data)} rows, "
+                   f"from {reanalysis_data.index.min()} to {reanalysis_data.index.max()}")
+        
+        # Create PlantMetaData with embedded metadata definitions
+        metadata = PlantMetaData(
+            latitude=40.0,
+            longitude=-105.0,
+            capacity=100.0,
+            # Curtailment metadata as dictionary
+            curtail={
+                'time': 'time',
+                'IAVL_DnWh': 'IAVL_DnWh',
+                'IAVL_ExtPwrDnWh': 'IAVL_ExtPwrDnWh'
+            },
+            # Reanalysis metadata as nested dictionary
+            reanalysis={
+                'synthetic': {
+                    'time': 'datetime',
+                    'WMETR_HorWdSpd': 'WMETR_HorWdSpd',
+                    'WMETR_HorWdDir': 'WMETR_HorWdDir',
+                    'WMETR_AirDen': 'WMETR_AirDen'
+                }
+            }
+        )
+        
+        logger.info(f"Created PlantMetaData - Capacity: {metadata.capacity} MW")
+        
+        # Create PlantData with all required datasets
+        # Pass curtail and reanalysis DURING construction
+        plant_data = PlantData(
+            analysis_type="MonteCarloAEP",
+            metadata=metadata,
+            scada=scada_data,
+            meter=meter_data,
+            curtail=curtail_data,
+            reanalysis={'synthetic': reanalysis_data}
+        )
+        
+        logger.info("PlantData created with all datasets")
+        
+        # Initialize MonteCarloAEP analysis
+        # Use daily resolution for short-term data (change to "MS" for monthly if you have months of data)
+        # Set end_date_lt to last date of reanalysis to avoid month-end requirement
+        # Reduce uncertainty_windiness to match our short data period
+        last_reanal_date = reanalysis_data.index.max()
+        logger.info(f"Initializing OpenOA MonteCarloAEP with daily resolution, end_date_lt={last_reanal_date}")
+        
+        mc_aep = MonteCarloAEP(
+            plant=plant_data,
+            reanalysis_products=['synthetic'],  # Use our synthetic reanalysis data
+            time_resolution='D',  # Daily resolution (use 'MS' for monthly if >= 1 month of data)
+            end_date_lt=last_reanal_date,  # Use all available data
+            uncertainty_windiness=(1.0, 1.0)  # Minimum 1 year for demo data (default is (10.0, 20.0) years!)
+        )
+        
+        # Run the analysis with 50 simulations
+        logger.info("Running OpenOA Monte Carlo simulation with 50 iterations...")
+        
+        mc_aep.run(
+            num_sim=50,  # Number of Monte Carlo simulations
+            progress_bar=False  # Disable progress bar for API
+        )
+        
+        # Extract results from OpenOA
+        # OpenOA stores results in results DataFrame
+        samples = mc_aep.results['aep_GWh'].values * 1000  # Convert GWh to MWh
         
         # Calculate percentiles
         p50 = float(np.percentile(samples, 50))  # Median
@@ -177,14 +282,17 @@ def run_aep_analysis(scada_df: pd.DataFrame, meter_df: pd.DataFrame) -> Dict[str
             "samples": [round(float(s), 2) for s in samples.tolist()]
         }
         
-        logger.info(f"Analysis complete - P50: {result['p50']} MWh, P90: {result['p90']} MWh")
-        logger.info(f"Generated {num_sim} simulation samples")
+        logger.info(f"OpenOA analysis complete - P50: {result['p50']} MWh, P90: {result['p90']} MWh")
+        logger.info(f"Generated {len(result['samples'])} simulation samples using OpenOA")
         
         return result
         
     except ValueError as e:
         logger.error(f"Validation error in AEP analysis: {str(e)}", exc_info=True)
         raise
+    except AttributeError as e:
+        logger.error(f"OpenOA attribute error: {str(e)}", exc_info=True)
+        raise ValueError(f"OpenOA integration error: {str(e)}")
     except Exception as e:
         logger.error(f"Unexpected error in AEP analysis: {str(e)}", exc_info=True)
         raise
