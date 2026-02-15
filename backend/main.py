@@ -1,0 +1,235 @@
+"""
+OpenOA Cloud Analyst - FastAPI Backend
+Production-ready API for wind plant performance analysis.
+"""
+import logging
+import os
+import sys
+from io import BytesIO
+from typing import List
+
+import pandas as pd
+from fastapi import FastAPI, File, UploadFile, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+
+from services.openoa_services import run_aep_analysis
+
+# Environment configuration
+PORT = int(os.getenv("PORT", 8000))
+HOST = os.getenv("HOST", "0.0.0.0")
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+# Configure logging
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL.upper()),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="OpenOA Cloud Analyst",
+    description="API for wind plant performance analysis using OpenOA",
+    version="1.0.0"
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for development
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# Response models
+class HealthResponse(BaseModel):
+    status: str
+
+
+class AnalysisResponse(BaseModel):
+    p50: float
+    p90: float
+    samples: List[float]
+
+
+# Routes
+@app.get("/", response_model=HealthResponse)
+async def health_check():
+    """
+    Health check endpoint to verify API is running.
+    """
+    logger.info("Health check requested")
+    return {"status": "OpenOA API running"}
+
+
+@app.post("/analyze", response_model=AnalysisResponse)
+async def analyze(
+    scada_file: UploadFile = File(..., description="SCADA data file (CSV)"),
+    meter_file: UploadFile = File(..., description="Meter data file (CSV)")
+):
+    """
+    Run AEP analysis on uploaded wind plant data.
+    
+    Args:
+        scada_file: CSV file containing SCADA data
+        meter_file: CSV file containing meter data
+    
+    Returns:
+        Analysis results with P50, P90, and sample distribution
+    
+    Raises:
+        HTTPException: If file processing or analysis fails
+    """
+    logger.info(f"Analysis requested - SCADA: {scada_file.filename}, Meter: {meter_file.filename}")
+    
+    try:
+        # Validate file types
+        if not scada_file.filename.endswith('.csv'):
+            logger.warning(f"Invalid SCADA file type: {scada_file.filename}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="SCADA file must be a CSV file"
+            )
+        
+        if not meter_file.filename.endswith('.csv'):
+            logger.warning(f"Invalid meter file type: {meter_file.filename}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Meter file must be a CSV file"
+            )
+        
+        # Read files into memory
+        scada_content = await scada_file.read()
+        meter_content = await meter_file.read()
+        
+        # Convert to pandas DataFrames
+        try:
+            scada_df = pd.read_csv(BytesIO(scada_content))
+            logger.info(f"SCADA file loaded - {len(scada_df)} rows, {len(scada_df.columns)} columns")
+        except Exception as e:
+            logger.error(f"Failed to parse SCADA file: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to parse SCADA CSV file: {str(e)}"
+            )
+        
+        try:
+            meter_df = pd.read_csv(BytesIO(meter_content))
+            logger.info(f"Meter file loaded - {len(meter_df)} rows, {len(meter_df.columns)} columns")
+        except Exception as e:
+            logger.error(f"Failed to parse meter file: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to parse meter CSV file: {str(e)}"
+            )
+        
+        # Run analysis
+        try:
+            logger.info("Starting AEP analysis...")
+            result = run_aep_analysis(scada_df, meter_df)
+            logger.info(f"Analysis completed successfully - P50: {result['p50']:.2f} MWh, P90: {result['p90']:.2f} MWh")
+            return result
+        except ValueError as e:
+            logger.error(f"Analysis validation error: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Analysis failed: {str(e)}"
+            )
+        except Exception as e:
+            logger.error(f"Analysis error: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Internal analysis error: {str(e)}"
+            )
+    
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        # Catch any unexpected errors
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred"
+        )
+
+
+# Exception handlers
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc):
+    """
+    Global HTTP exception handler for consistent error responses.
+    """
+    logger.warning(f"HTTP {exc.status_code}: {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": exc.detail}
+    )
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request, exc):
+    """
+    Global exception handler for unexpected errors.
+    """
+    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"error": "Internal server error"}
+    )
+
+
+# Application startup/shutdown events
+@app.on_event("startup")
+async def startup_event():
+    """
+    Log application startup with configuration details.
+    """
+    logger.info("=" * 60)
+    logger.info("🚀 OpenOA Cloud Analyst API Starting Up")
+    logger.info("=" * 60)
+    logger.info(f"Environment: {ENVIRONMENT}")
+    logger.info(f"Host: {HOST}")
+    logger.info(f"Port: {PORT}")
+    logger.info(f"Log Level: {LOG_LEVEL}")
+    logger.info(f"API Version: {app.version}")
+    logger.info(f"CORS Enabled: {'Yes' if ENVIRONMENT == 'development' else 'Restricted'}")
+    logger.info("=" * 60)
+    logger.info("✅ API Ready to Accept Requests")
+    logger.info("=" * 60)
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """
+    Log application shutdown.
+    """
+    logger.info("=" * 60)
+    logger.info("🛑 OpenOA Cloud Analyst API Shutting Down")
+    logger.info("=" * 60)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    
+    # Production-ready uvicorn configuration
+    logger.info(f"Starting uvicorn server on {HOST}:{PORT}")
+    logger.info(f"Running in {ENVIRONMENT} mode")
+    
+    uvicorn.run(
+        "main:app",
+        host=HOST,
+        port=PORT,
+        reload=(ENVIRONMENT == "development"),
+        log_level=LOG_LEVEL.lower(),
+        access_log=True,
+        workers=1 if ENVIRONMENT == "development" else 4
+    )

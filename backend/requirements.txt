@@ -1,0 +1,18 @@
+# FastAPI and Server
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# Data Science Stack (latest stable with prebuilt wheels)
+numpy>=1.24,<3.0
+pandas>=2.0,<3.0
+scipy>=1.11,<2.0
+scikit-learn>=1.3,<2.0
+matplotlib>=3.7,<4.0
+
+# OpenOA Dependencies
+pyyaml>=6.0
+attrs>=21.0
+statsmodels>=0.13
+tqdm>=4.60
+bokeh>=2.4
