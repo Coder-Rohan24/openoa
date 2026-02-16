@@ -190,7 +190,7 @@ async def general_exception_handler(request, exc):
     )
 
 
-# Application startup/shutdown events
+# Application startup/shutdown event
 @app.on_event("startup")
 async def startup_event():
     """
