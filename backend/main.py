@@ -21,6 +21,7 @@ PORT = int(os.getenv("PORT", 8000))
 HOST = os.getenv("HOST", "0.0.0.0")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 # Configure logging
 logging.basicConfig(
@@ -42,11 +43,13 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=[FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+logger.info(f"CORS configured for: {FRONTEND_URL}")
 
 
 # Response models
@@ -201,7 +204,7 @@ async def startup_event():
     logger.info(f"Port: {PORT}")
     logger.info(f"Log Level: {LOG_LEVEL}")
     logger.info(f"API Version: {app.version}")
-    logger.info(f"CORS Enabled: {'Yes' if ENVIRONMENT == 'development' else 'Restricted'}")
+    logger.info(f"CORS: {FRONTEND_URL}")
     logger.info("=" * 60)
     logger.info("✅ API Ready to Accept Requests")
     logger.info("=" * 60)
