@@ -164,7 +164,15 @@ def run_aep_analysis(scada_df: pd.DataFrame, meter_df: pd.DataFrame) -> Dict[str
         })
         
         logger.info(f"Prepared SCADA: {len(scada_data)} rows, Meter: {len(meter_data)} rows")
-        
+        if len(scada_data) < 720:  # 720 hours ≈ 30 days
+            raise ValueError(
+                "MonteCarloAEP requires at least ~1 month (720 hourly records) of SCADA data."
+            )
+
+        if len(meter_data) < 720:
+            raise ValueError(
+                "MonteCarloAEP requires at least ~1 month (720 hourly records) of meter data."
+            )
         # Generate curtailment data (required by OpenOA)
         # Using meter timestamps and assuming no losses for simplified analysis
         curtail_data = pd.DataFrame({
@@ -245,18 +253,83 @@ def run_aep_analysis(scada_df: pd.DataFrame, meter_df: pd.DataFrame) -> Dict[str
         logger.info("PlantData created with all datasets")
         
         # Initialize MonteCarloAEP analysis
-        # Use daily resolution for short-term data (change to "MS" for monthly if you have months of data)
-        # Set end_date_lt to last date of reanalysis to avoid month-end requirement
-        # Reduce uncertainty_windiness to match our short data period
-        last_reanal_date = reanalysis_data.index.max()
-        logger.info(f"Initializing OpenOA MonteCarloAEP with daily resolution, end_date_lt={last_reanal_date}")
+        # Find the common date range across all datasets
+        scada_start = scada_data['time'].min()
+        scada_end = scada_data['time'].max()
+        meter_start = meter_data['time'].min()
+        meter_end = meter_data['time'].max()
+        reanal_start = reanalysis_data.index.min()
+        reanal_end = reanalysis_data.index.max()
+        
+        logger.info(f"Data ranges:")
+        logger.info(f"  SCADA:      {scada_start} to {scada_end}")
+        logger.info(f"  Meter:      {meter_start} to {meter_end}")
+        logger.info(f"  Reanalysis: {reanal_start} to {reanal_end}")
+        
+        # Find the latest start date and earliest end date across all datasets
+        common_start = max(scada_start, meter_start, reanal_start)
+        common_end = min(scada_end, meter_end, reanal_end)
+        
+        # Calculate total duration - add 1 to include both start and end days
+        # E.g., Jan 1 to Dec 31 should be 365 days, not 364
+        total_duration_days = (common_end - common_start).days + 1
+        total_duration_months = total_duration_days / 30.44  # Average month length
+        
+        logger.info(f"Common data period: {common_start} to {common_end}")
+        logger.info(f"Total duration: {total_duration_days} days ({total_duration_months:.1f} months)")
+        
+        # OpenOA requires:
+        # 1. Integer years for uncertainty_windiness (no decimals!)
+        # 2. Sufficient data for the uncertainty window
+        # 3. At least 365 days (12 months) for monthly resolution
+        
+        # Minimum requirement: 365 days for robust analysis
+        if total_duration_days < 365:
+            raise ValueError(
+                f"Insufficient data: {total_duration_days} days ({total_duration_months:.1f} months). "
+                f"Need at least 365 days (12 months) for AEP analysis with Monte Carlo uncertainty quantification. "
+                f"Please upload data spanning at least one full year."
+            )
+        
+        # Use DAILY resolution with 1-year uncertainty for all cases
+        # This is the most reliable configuration for 12-24 months of data
+        time_res = 'D'
+        uncertainty = (1.0, 1.0)  # Must be integer years!
+        
+        # Set end_date conservatively to avoid boundary issues
+        # Buffer strategy based on available data:
+        if total_duration_days <= 370:
+            # For exactly 12 months: No buffer (tight margin)
+            buffer_days = 0
+        elif total_duration_days <= 385:
+            # For 12-13 months: Minimal 1-day buffer
+            buffer_days = 1
+        else:
+            # For 13+ months: More conservative 5-day buffer
+            buffer_days = 5
+        
+        end_date_lt = common_end.normalize() - pd.Timedelta(days=buffer_days)
+        
+        # Double-check we still have enough data after backing off
+        # Add 1 for inclusive date counting
+        effective_days = (end_date_lt - common_start).days + 1
+        if effective_days < 365:
+            raise ValueError(
+                f"After accounting for incomplete days, only {effective_days} complete days available. "
+                f"Need at least 365 days. Please upload more data."
+            )
+        
+        logger.info(f"Using DAILY resolution with uncertainty_windiness=(1.0, 1.0)")
+        logger.info(f"Buffered {buffer_days} days from end for clean boundaries")
+        logger.info(f"Setting end_date_lt to: {end_date_lt} ({effective_days} complete days)")
+        logger.info(f"OpenOA will use ~365 days from the dataset for long-term correction")
         
         mc_aep = MonteCarloAEP(
             plant=plant_data,
-            reanalysis_products=['synthetic'],  # Use our synthetic reanalysis data
-            time_resolution='D',  # Daily resolution (use 'MS' for monthly if >= 1 month of data)
-            end_date_lt=last_reanal_date,  # Use all available data
-            uncertainty_windiness=(1.0, 1.0)  # Minimum 1 year for demo data (default is (10.0, 20.0) years!)
+            reanalysis_products=['synthetic'],
+            time_resolution=time_res,
+            end_date_lt=end_date_lt,  # Explicitly set with appropriate buffer
+            uncertainty_windiness=uncertainty
         )
         
         # Run the analysis with 50 simulations
