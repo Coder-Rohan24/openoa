@@ -12,8 +12,8 @@ export const useFormValidation = () => {
       return 'Please upload both SCADA and Meter CSV files';
     }
     
-    if (values.numSimulations < 100 || values.numSimulations > 10000) {
-      return 'Number of simulations must be between 100 and 10,000';
+    if (values.numSimulations < 50 || values.numSimulations > 10000) {
+      return 'Number of simulations must be between 50 and 10,000';
     }
     
     if (values.ratedCapacity <= 0 || values.ratedCapacity > 100000) {
