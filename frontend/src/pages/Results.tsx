@@ -8,6 +8,8 @@ import {
   Title,
   Tooltip,
   Legend,
+  LineElement,
+  PointElement,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
@@ -16,6 +18,8 @@ ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
+  LineElement,
+  PointElement,
   Title,
   Tooltip,
   Legend
@@ -27,10 +31,13 @@ interface AnalysisData {
   samples: number[];
 }
 
+type TabName = 'dashboard' | 'quality' | 'wind' | 'power' | 'energy' | 'aep';
+
 const Results = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [data, setData] = useState<AnalysisData | null>(null);
+  const [activeTab, setActiveTab] = useState<TabName>('dashboard');
 
   useEffect(() => {
     // Get data from navigation state
@@ -39,6 +46,16 @@ const Results = () => {
       setData(stateData);
     }
   }, [location]);
+
+  // Tab configurations
+  const tabs = [
+    { id: 'dashboard' as TabName, name: 'Dashboard', icon: '📊' },
+    { id: 'quality' as TabName, name: 'Data Quality', icon: '✓' },
+    { id: 'wind' as TabName, name: 'Wind Resource', icon: '🌬️' },
+    { id: 'power' as TabName, name: 'Power Curve', icon: '⚡' },
+    { id: 'energy' as TabName, name: 'Energy Analysis', icon: '📈' },
+    { id: 'aep' as TabName, name: 'AEP Analysis', icon: '🎯' },
+  ];
 
   // Calculate statistics
   const calculateStats = () => {
@@ -157,160 +174,232 @@ const Results = () => {
   const stats = calculateStats();
   const histogramData = prepareHistogramData();
 
+  // Render tab content
+  const renderTabContent = () => {
+    if (!data) return null;
+
+    switch (activeTab) {
+      case 'dashboard':
+        return <DashboardTab data={data} stats={stats} histogramData={histogramData} chartOptions={chartOptions} />;
+      case 'quality':
+        return <DataQualityTab />;
+      case 'wind':
+        return <WindResourceTab />;
+      case 'power':
+        return <PowerCurveTab />;
+      case 'energy':
+        return <EnergyAnalysisTab />;
+      case 'aep':
+        return <AEPAnalysisTab data={data} stats={stats} histogramData={histogramData} chartOptions={chartOptions} />;
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="space-y-10">
-      {/* Results Header with Back Button */}
-      <div className="bg-white rounded-xl shadow-xl p-8 border border-gray-100">
-        <div className="flex items-center justify-between flex-wrap gap-4">
+    <div className="space-y-6">
+      {/* Compact Header */}
+      <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-deep-blue to-teal mb-3">
-              Analysis Results
-            </h1>
-            <p className="text-gray-700 text-lg">
-              View your wind plant AEP analysis results and statistics
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900">Wind Plant Analysis</h1>
+            <p className="text-sm text-gray-600 mt-1">Comprehensive performance assessment</p>
           </div>
           <button
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-800 font-semibold rounded-xl shadow-md transition-all duration-300 transform hover:scale-105"
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-all duration-200 flex items-center gap-2"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back to Home
+            Back
           </button>
         </div>
       </div>
 
       {data ? (
         <>
-          {/* Key Metrics */}
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-gradient-to-br from-white to-teal/5 rounded-xl shadow-xl p-10 border-l-4 border-teal transition-all duration-300 hover:shadow-2xl hover:scale-[1.02]">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-800">P50 Estimate</h2>
-                <div className="text-teal bg-teal/10 p-4 rounded-xl shadow-md">
-                  <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                  </svg>
-                </div>
-              </div>
-              <div className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-deep-blue to-teal mb-3">
-                {data.p50.toLocaleString()}
-              </div>
-              <p className="text-gray-600 font-medium">MWh - Median annual energy production</p>
-            </div>
-
-            <div className="bg-gradient-to-br from-white to-deep-blue/5 rounded-xl shadow-xl p-10 border-l-4 border-deep-blue transition-all duration-300 hover:shadow-2xl hover:scale-[1.02]">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-800">P90 Estimate</h2>
-                <div className="text-deep-blue bg-deep-blue/10 p-4 rounded-xl shadow-md">
-                  <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-deep-blue to-teal mb-3">
-                {data.p90.toLocaleString()}
-              </div>
-              <p className="text-gray-600 font-medium">MWh - 90% exceedance probability</p>
+          {/* Tabs Navigation */}
+          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+            <div className="flex overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex items-center gap-2 px-6 py-4 text-sm font-medium whitespace-nowrap transition-all duration-200
+                    ${activeTab === tab.id
+                      ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md'
+                      : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }
+                    border-r border-gray-200 last:border-r-0
+                  `}
+                >
+                  <span className="text-lg">{tab.icon}</span>
+                  <span>{tab.name}</span>
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Distribution Chart */}
-          <div className="bg-white rounded-xl shadow-xl p-8 border border-gray-100">
-            <h2 className="text-2xl font-bold text-deep-blue mb-8">
-              AEP Distribution Histogram
-            </h2>
-            <div className="h-96">
-              {histogramData ? (
-                <Bar data={histogramData} options={chartOptions} />
-              ) : (
-                <div className="h-full flex items-center justify-center bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-                  <p className="text-gray-400 font-medium">No chart data available</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Statistics Table */}
-          <div className="bg-white rounded-xl shadow-xl p-8 border border-gray-100">
-            <h2 className="text-2xl font-bold text-deep-blue mb-8">
-              Statistical Summary
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-                  <tr>
-                    <th className="px-8 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Metric
-                    </th>
-                    <th className="px-8 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Value
-                    </th>
-                    <th className="px-8 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Unit
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  <tr className="hover:bg-gradient-to-r hover:from-teal/5 hover:to-transparent transition-all duration-200">
-                    <td className="px-8 py-5 whitespace-nowrap text-sm font-bold text-gray-900">Mean</td>
-                    <td className="px-8 py-5 whitespace-nowrap text-sm text-gray-800 font-semibold">
-                      {stats.mean.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-8 py-5 whitespace-nowrap text-sm text-gray-600">MWh</td>
-                  </tr>
-                  <tr className="hover:bg-gradient-to-r hover:from-teal/5 hover:to-transparent transition-all duration-200">
-                    <td className="px-8 py-5 whitespace-nowrap text-sm font-bold text-gray-900">Std Dev</td>
-                    <td className="px-8 py-5 whitespace-nowrap text-sm text-gray-800 font-semibold">
-                      {stats.stdDev.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-8 py-5 whitespace-nowrap text-sm text-gray-600">MWh</td>
-                  </tr>
-                  <tr className="hover:bg-gradient-to-r hover:from-teal/5 hover:to-transparent transition-all duration-200">
-                    <td className="px-8 py-5 whitespace-nowrap text-sm font-bold text-gray-900">P50 (Median)</td>
-                    <td className="px-8 py-5 whitespace-nowrap text-sm text-gray-800 font-semibold">
-                      {data.p50.toLocaleString()}
-                    </td>
-                    <td className="px-8 py-5 whitespace-nowrap text-sm text-gray-600">MWh</td>
-                  </tr>
-                  <tr className="hover:bg-gradient-to-r hover:from-teal/5 hover:to-transparent transition-all duration-200">
-                    <td className="px-8 py-5 whitespace-nowrap text-sm font-bold text-gray-900">P90</td>
-                    <td className="px-8 py-5 whitespace-nowrap text-sm text-gray-800 font-semibold">
-                      {data.p90.toLocaleString()}
-                    </td>
-                    <td className="px-8 py-5 whitespace-nowrap text-sm text-gray-600">MWh</td>
-                  </tr>
-                  <tr className="hover:bg-gradient-to-r hover:from-teal/5 hover:to-transparent transition-all duration-200">
-                    <td className="px-8 py-5 whitespace-nowrap text-sm font-bold text-gray-900">Samples</td>
-                    <td className="px-8 py-5 whitespace-nowrap text-sm text-gray-800 font-semibold">
-                      {stats.count.toLocaleString()}
-                    </td>
-                    <td className="px-8 py-5 whitespace-nowrap text-sm text-gray-600">count</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+          {/* Tab Content */}
+          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+            {renderTabContent()}
           </div>
         </>
       ) : (
-        <div className="bg-white rounded-xl shadow-xl p-16 border border-gray-100">
-          <div className="text-center">
-            <svg className="w-24 h-24 mx-auto mb-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            <h2 className="text-2xl font-bold text-gray-800 mb-3">No Analysis Data</h2>
-            <p className="text-gray-600 mb-8 text-lg">Please run an analysis from the home page to view results.</p>
-            <button
-              onClick={() => navigate('/')}
-              className="px-8 py-4 bg-gradient-to-r from-deep-blue to-teal hover:from-deep-blue/90 hover:to-teal/90 text-white font-bold rounded-xl shadow-xl transition-all duration-300 transform hover:scale-105 text-lg"
-            >
-              Go to Home
-            </button>
-          </div>
+        <div className="bg-white rounded-lg shadow-md p-12 border border-gray-200 text-center">
+          <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">No Analysis Data</h2>
+          <p className="text-sm text-gray-600 mb-6">Run an analysis from the home page to view results.</p>
+          <button
+            onClick={() => navigate('/')}
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white text-sm font-medium rounded-lg shadow-md transition-all duration-200"
+          >
+            Go to Home
+          </button>
         </div>
       )}
+    </div>
+  );
+};
+
+// Dashboard Tab Component
+const DashboardTab = ({ data, stats, histogramData, chartOptions }: any) => (
+  <div className="space-y-6">
+    <h2 className="text-xl font-semibold text-gray-900">Overview Dashboard</h2>
+    
+    {/* Key Metrics Grid */}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <MetricCard title="P50" value={`${data.p50.toLocaleString()} MWh`} subtitle="Median AEP" color="blue" />
+      <MetricCard title="P90" value={`${data.p90.toLocaleString()} MWh`} subtitle="90% Exceedance" color="cyan" />
+      <MetricCard title="Mean" value={`${stats.mean.toLocaleString(undefined, { maximumFractionDigits: 2 })} MWh`} subtitle="Average AEP" color="indigo" />
+      <MetricCard title="Samples" value={stats.count.toLocaleString()} subtitle="Monte Carlo" color="purple" />
+    </div>
+
+    {/* Chart */}
+    <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+      <h3 className="text-sm font-semibold text-gray-700 mb-4">AEP Distribution</h3>
+      <div className="h-80">
+        {histogramData && <Bar data={histogramData} options={chartOptions} />}
+      </div>
+    </div>
+  </div>
+);
+
+// Data Quality Tab Component
+const DataQualityTab = () => (
+  <div className="space-y-6">
+    <h2 className="text-xl font-semibold text-gray-900">Data Quality Assessment</h2>
+    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+      <p className="text-sm text-gray-700">🚧 Coming soon: Detailed data quality metrics</p>
+    </div>
+  </div>
+);
+
+// Wind Resource Tab Component
+const WindResourceTab = () => (
+  <div className="space-y-6">
+    <h2 className="text-xl font-semibold text-gray-900">Wind Resource Characteristics</h2>
+    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+      <p className="text-sm text-gray-700">🚧 Coming soon: Wind statistics and Weibull analysis</p>
+    </div>
+  </div>
+);
+
+// Power Curve Tab Component
+const PowerCurveTab = () => (
+  <div className="space-y-6">
+    <h2 className="text-xl font-semibold text-gray-900">Turbine Power Curve</h2>
+    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+      <p className="text-sm text-gray-700">🚧 Coming soon: Power curve analysis</p>
+    </div>
+  </div>
+);
+
+// Energy Analysis Tab Component
+const EnergyAnalysisTab = () => (
+  <div className="space-y-6">
+    <h2 className="text-xl font-semibold text-gray-900">Energy Production Analysis</h2>
+    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+      <p className="text-sm text-gray-700">🚧 Coming soon: Monthly energy and capacity factor</p>
+    </div>
+  </div>
+);
+
+// AEP Analysis Tab Component (detailed version of dashboard)
+const AEPAnalysisTab = ({ data, stats, histogramData, chartOptions }: any) => (
+  <div className="space-y-6">
+    <h2 className="text-xl font-semibold text-gray-900">Detailed AEP Analysis</h2>
+    
+    {/* Statistics Table */}
+    <div className="overflow-x-auto border border-gray-200 rounded-lg">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Metric</th>
+            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Value</th>
+            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Unit</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200 text-sm">
+          <tr className="hover:bg-gray-50">
+            <td className="px-6 py-4 font-medium text-gray-900">Mean</td>
+            <td className="px-6 py-4 text-gray-700">{stats.mean.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+            <td className="px-6 py-4 text-gray-500">MWh</td>
+          </tr>
+          <tr className="hover:bg-gray-50">
+            <td className="px-6 py-4 font-medium text-gray-900">Std Dev</td>
+            <td className="px-6 py-4 text-gray-700">{stats.stdDev.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+            <td className="px-6 py-4 text-gray-500">MWh</td>
+          </tr>
+          <tr className="hover:bg-gray-50">
+            <td className="px-6 py-4 font-medium text-gray-900">P50 (Median)</td>
+            <td className="px-6 py-4 text-gray-700">{data.p50.toLocaleString()}</td>
+            <td className="px-6 py-4 text-gray-500">MWh</td>
+          </tr>
+          <tr className="hover:bg-gray-50">
+            <td className="px-6 py-4 font-medium text-gray-900">P90</td>
+            <td className="px-6 py-4 text-gray-700">{data.p90.toLocaleString()}</td>
+            <td className="px-6 py-4 text-gray-500">MWh</td>
+          </tr>
+          <tr className="hover:bg-gray-50">
+            <td className="px-6 py-4 font-medium text-gray-900">Samples</td>
+            <td className="px-6 py-4 text-gray-700">{stats.count.toLocaleString()}</td>
+            <td className="px-6 py-4 text-gray-500">count</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    {/* Chart */}
+    <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+      <h3 className="text-sm font-semibold text-gray-700 mb-4">Distribution Histogram</h3>
+      <div className="h-96">
+        {histogramData && <Bar data={histogramData} options={chartOptions} />}
+      </div>
+    </div>
+  </div>
+);
+
+// Reusable Metric Card Component
+const MetricCard = ({ title, value, subtitle, color }: { title: string; value: string; subtitle: string; color: string }) => {
+  const colorClasses = {
+    blue: 'from-blue-500 to-blue-600',
+    cyan: 'from-cyan-500 to-cyan-600',
+    indigo: 'from-indigo-500 to-indigo-600',
+    purple: 'from-purple-500 to-purple-600',
+  }[color] || 'from-gray-500 to-gray-600';
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow duration-200">
+      <div className={`inline-block px-2 py-1 bg-gradient-to-r ${colorClasses} text-white text-xs font-semibold rounded mb-2`}>
+        {title}
+      </div>
+      <div className="text-2xl font-bold text-gray-900 mb-1">{value}</div>
+      <div className="text-xs text-gray-600">{subtitle}</div>
     </div>
   );
 };
