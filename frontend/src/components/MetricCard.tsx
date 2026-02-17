@@ -9,7 +9,7 @@ const MetricCard = ({ title, value, subtitle, color }: MetricCardProps) => {
   }[color] || 'from-gray-500 to-gray-600';
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow duration-200">
+    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-all duration-200 hover-lift animate-fadeIn">
       <div className={`inline-block px-2 py-1 bg-gradient-to-r ${colorClasses} text-white text-xs font-semibold rounded mb-2`}>
         {title}
       </div>

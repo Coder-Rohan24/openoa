@@ -17,7 +17,7 @@ const KPICard = ({ label, value, unit, subtext, color }: KPICardProps) => {
   };
 
   return (
-    <div className="bg-white rounded-lg border-2 border-gray-200 p-4 hover:shadow-lg transition-all duration-200 transform hover:scale-105">
+    <div className="bg-white rounded-lg border-2 border-gray-200 p-4 hover:shadow-lg transition-all duration-200 transform hover:scale-105 animate-fadeIn">
       <div className={`text-xs font-semibold mb-2 uppercase tracking-wide ${colorMap[color]}`}>
         {label}
       </div>

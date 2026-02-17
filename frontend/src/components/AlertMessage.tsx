@@ -27,7 +27,7 @@ const AlertMessage = ({ type, message }: AlertMessageProps) => {
   const Icon = style.icon;
 
   return (
-    <div className={`mb-6 ${style.bg} border-l-4 ${style.border} ${style.text} px-6 py-4 rounded-lg flex items-start shadow-md ${style.animate}`}>
+    <div className={`mb-6 ${style.bg} border-l-4 ${style.border} ${style.text} px-6 py-4 rounded-lg flex items-start shadow-md ${style.animate} animate-slideInFromTop`}>
       <Icon className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0" />
       <span className="font-medium">{message}</span>
     </div>

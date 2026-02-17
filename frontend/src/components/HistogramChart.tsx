@@ -157,7 +157,7 @@ const HistogramChart = ({ samples }: HistogramChartProps) => {
   // Handle empty data
   if (!histogramData) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+      <div className="h-full flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 animate-fadeIn">
         <div className="text-center text-gray-400">
           <HiOutlineChartBar className="w-16 h-16 mx-auto mb-4" />
           <p className="text-lg font-medium">No data available</p>
@@ -167,7 +167,11 @@ const HistogramChart = ({ samples }: HistogramChartProps) => {
     );
   }
 
-  return <Bar data={histogramData} options={chartOptions} />;
+  return (
+    <div className="animate-fadeIn">
+      <Bar data={histogramData} options={chartOptions} />
+    </div>
+  );
 };
 
 export default HistogramChart;
