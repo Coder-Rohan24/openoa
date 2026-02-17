@@ -86,8 +86,14 @@ const Home = () => {
         },
       });
 
-      // Navigate to results page with data
-      navigate('/results', { state: { data: response.data } });
+      // Navigate to results page with data and files for additional analysis
+      navigate('/results', { 
+        state: { 
+          data: response.data,
+          scadaFile: scadaFile,
+          meterFile: meterFile
+        } 
+      });
     } catch (err: any) {
       console.error('Analysis error:', err);
       if (err.response?.data?.error) {
