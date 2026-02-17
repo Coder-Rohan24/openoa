@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import axios from 'axios';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -31,6 +32,48 @@ interface AnalysisData {
   samples: number[];
 }
 
+interface DataQuality {
+  scada: any;
+  meter: any;
+  overall_quality_score: number;
+}
+
+interface WindStats {
+  mean: number;
+  median: number;
+  std: number;
+  min: number;
+  max: number;
+  histogram_bins: number[];
+  histogram_counts: number[];
+}
+
+interface PowerCurve {
+  wind_speed_bins: number[];
+  avg_power_per_bin: number[];
+  count_per_bin: number[];
+  std_per_bin: number[];
+}
+
+interface MonthlyEnergy {
+  monthly_data: Array<{
+    month: string;
+    energy: number;
+    days: number;
+    avg_daily: number;
+  }>;
+}
+
+interface CapacityFactor {
+  capacity_factor: number;
+  actual_energy_kwh: number;
+  actual_energy_mwh: number;
+  theoretical_energy_kwh: number;
+  theoretical_energy_mwh: number;
+  duration_hours: number;
+  duration_days: number;
+}
+
 type TabName = 'dashboard' | 'quality' | 'wind' | 'power' | 'energy' | 'aep';
 
 const Results = () => {
@@ -38,14 +81,136 @@ const Results = () => {
   const navigate = useNavigate();
   const [data, setData] = useState<AnalysisData | null>(null);
   const [activeTab, setActiveTab] = useState<TabName>('dashboard');
+  
+  // Store uploaded files for additional analysis
+  const [scadaFile, setScadaFile] = useState<File | null>(null);
+  const [meterFile, setMeterFile] = useState<File | null>(null);
+  
+  // Analysis results
+  const [dataQuality, setDataQuality] = useState<DataQuality | null>(null);
+  const [windStats, setWindStats] = useState<WindStats | null>(null);
+  const [powerCurve, setPowerCurve] = useState<PowerCurve | null>(null);
+  const [monthlyEnergy, setMonthlyEnergy] = useState<MonthlyEnergy | null>(null);
+  const [capacityFactor, setCapacityFactor] = useState<CapacityFactor | null>(null);
+  
+  // Loading states
+  const [loading, setLoading] = useState<{ [key: string]: boolean }>({});
+
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
   useEffect(() => {
     // Get data from navigation state
     const stateData = location.state?.data;
+    const stateScadaFile = location.state?.scadaFile;
+    const stateMeterFile = location.state?.meterFile;
+    
     if (stateData) {
       setData(stateData);
     }
+    
+    if (stateScadaFile && stateMeterFile) {
+      setScadaFile(stateScadaFile);
+      setMeterFile(stateMeterFile);
+    }
   }, [location]);
+
+  // API call functions
+  const fetchDataQuality = async () => {
+    if (!scadaFile || !meterFile || dataQuality) return;
+    
+    setLoading(prev => ({ ...prev, quality: true }));
+    try {
+      const formData = new FormData();
+      formData.append('scada_file', scadaFile);
+      formData.append('meter_file', meterFile);
+      
+      const response = await axios.post(`${API_URL}/analyze/data-quality`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setDataQuality(response.data);
+    } catch (error) {
+      console.error('Data quality fetch error:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, quality: false }));
+    }
+  };
+
+  const fetchWindStats = async () => {
+    if (!scadaFile || windStats) return;
+    
+    setLoading(prev => ({ ...prev, wind: true }));
+    try {
+      const formData = new FormData();
+      formData.append('scada_file', scadaFile);
+      
+      const response = await axios.post(`${API_URL}/analyze/wind-statistics`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setWindStats(response.data);
+    } catch (error) {
+      console.error('Wind stats fetch error:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, wind: false }));
+    }
+  };
+
+  const fetchPowerCurve = async () => {
+    if (!scadaFile || powerCurve) return;
+    
+    setLoading(prev => ({ ...prev, power: true }));
+    try {
+      const formData = new FormData();
+      formData.append('scada_file', scadaFile);
+      
+      const response = await axios.post(`${API_URL}/analyze/power-curve`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setPowerCurve(response.data);
+    } catch (error) {
+      console.error('Power curve fetch error:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, power: false }));
+    }
+  };
+
+  const fetchMonthlyEnergy = async () => {
+    if (!meterFile || monthlyEnergy) return;
+    
+    setLoading(prev => ({ ...prev, energy: true }));
+    try {
+      const formData = new FormData();
+      formData.append('meter_file', meterFile);
+      
+      const response = await axios.post(`${API_URL}/analyze/monthly-energy`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setMonthlyEnergy(response.data);
+    } catch (error) {
+      console.error('Monthly energy fetch error:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, energy: false }));
+    }
+  };
+
+  const fetchCapacityFactor = async () => {
+    if (!meterFile || capacityFactor) return;
+    
+    setLoading(prev => ({ ...prev, energy: true }));
+    try {
+      const formData = new FormData();
+      formData.append('meter_file', meterFile);
+      formData.append('rated_capacity', '2000'); // Default 2MW turbine
+      
+      const response = await axios.post(`${API_URL}/analyze/capacity-factor`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setCapacityFactor(response.data);
+    } catch (error) {
+      console.error('Capacity factor fetch error:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, energy: false }));
+    }
+  };
 
   // Tab configurations
   const tabs = [
@@ -182,13 +347,13 @@ const Results = () => {
       case 'dashboard':
         return <DashboardTab data={data} stats={stats} histogramData={histogramData} chartOptions={chartOptions} />;
       case 'quality':
-        return <DataQualityTab />;
+        return <DataQualityTab dataQuality={dataQuality} loading={loading.quality} onLoad={fetchDataQuality} />;
       case 'wind':
-        return <WindResourceTab />;
+        return <WindResourceTab windStats={windStats} loading={loading.wind} onLoad={fetchWindStats} />;
       case 'power':
-        return <PowerCurveTab />;
+        return <PowerCurveTab powerCurve={powerCurve} loading={loading.power} onLoad={fetchPowerCurve} />;
       case 'energy':
-        return <EnergyAnalysisTab />;
+        return <EnergyAnalysisTab monthlyEnergy={monthlyEnergy} capacityFactor={capacityFactor} loading={loading.energy} onLoadMonthly={fetchMonthlyEnergy} onLoadCapacity={fetchCapacityFactor} />;
       case 'aep':
         return <AEPAnalysisTab data={data} stats={stats} histogramData={histogramData} chartOptions={chartOptions} />;
       default:
@@ -290,44 +455,405 @@ const DashboardTab = ({ data, stats, histogramData, chartOptions }: any) => (
 );
 
 // Data Quality Tab Component
-const DataQualityTab = () => (
-  <div className="space-y-6">
-    <h2 className="text-xl font-semibold text-gray-900">Data Quality Assessment</h2>
-    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-      <p className="text-sm text-gray-700">🚧 Coming soon: Detailed data quality metrics</p>
+const DataQualityTab = ({ dataQuality, loading, onLoad }: any) => {
+  useEffect(() => {
+    if (!dataQuality && !loading) {
+      onLoad();
+    }
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Analyzing data quality...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!dataQuality) {
+    return (
+      <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
+        <p className="text-sm text-gray-700">No data quality information available</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-semibold text-gray-900">Data Quality Assessment</h2>
+      
+      {/* Overall Score */}
+      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-6 border border-blue-200">
+        <div className="text-center">
+          <div className="text-4xl font-bold text-blue-600 mb-2">
+            {dataQuality.overall_quality_score.toFixed(1)}%
+          </div>
+          <div className="text-sm text-gray-600">Overall Quality Score</div>
+        </div>
+      </div>
+
+      {/* SCADA Data Quality */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">SCADA Data Quality</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <div className="text-2xl font-bold text-gray-900">{dataQuality.scada.total_rows.toLocaleString()}</div>
+            <div className="text-xs text-gray-600">Total Rows</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-gray-900">{dataQuality.scada.time_coverage_days}</div>
+            <div className="text-xs text-gray-600">Days Coverage</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-gray-900">{dataQuality.scada.duplicate_timestamps}</div>
+            <div className="text-xs text-gray-600">Duplicates</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-gray-900">{dataQuality.scada.completeness_score.toFixed(1)}%</div>
+            <div className="text-xs text-gray-600">Completeness</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Meter Data Quality */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Meter Data Quality</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <div className="text-2xl font-bold text-gray-900">{dataQuality.meter.total_rows.toLocaleString()}</div>
+            <div className="text-xs text-gray-600">Total Rows</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-gray-900">{dataQuality.meter.time_coverage_days}</div>
+            <div className="text-xs text-gray-600">Days Coverage</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-gray-900">{dataQuality.meter.duplicate_timestamps}</div>
+            <div className="text-xs text-gray-600">Duplicates</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-gray-900">{dataQuality.meter.completeness_score.toFixed(1)}%</div>
+            <div className="text-xs text-gray-600">Completeness</div>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Wind Resource Tab Component
-const WindResourceTab = () => (
-  <div className="space-y-6">
-    <h2 className="text-xl font-semibold text-gray-900">Wind Resource Characteristics</h2>
-    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-      <p className="text-sm text-gray-700">🚧 Coming soon: Wind statistics and Weibull analysis</p>
+const WindResourceTab = ({ windStats, loading, onLoad }: any) => {
+  useEffect(() => {
+    if (!windStats && !loading) {
+      onLoad();
+    }
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Computing wind statistics...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!windStats) {
+    return (
+      <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
+        <p className="text-sm text-gray-700">No wind statistics available</p>
+      </div>
+    );
+  }
+
+  // Prepare histogram data for Chart.js
+  const histogramData = {
+    labels: windStats.histogram_bins?.slice(0, -1).map((bin: number, idx: number) => 
+      `${bin.toFixed(1)}-${windStats.histogram_bins[idx + 1]?.toFixed(1)}`
+    ) || [],
+    datasets: [
+      {
+        label: 'Frequency',
+        data: windStats.histogram_counts || [],
+        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+        borderColor: 'rgba(59, 130, 246, 1)',
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      title: {
+        display: true,
+        text: 'Wind Speed Distribution',
+        font: { size: 14, weight: 'bold' as const }
+      }
+    },
+    scales: {
+      x: { title: { display: true, text: 'Wind Speed (m/s)' } },
+      y: { title: { display: true, text: 'Frequency' }, beginAtZero: true }
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-semibold text-gray-900">Wind Resource Characteristics</h2>
+      
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <MetricCard title="Mean" value={`${windStats.mean.toFixed(2)} m/s`} subtitle="Average" color="blue" />
+        <MetricCard title="Median" value={`${windStats.median.toFixed(2)} m/s`} subtitle="50th Percentile" color="cyan" />
+        <MetricCard title="Std Dev" value={`${windStats.std.toFixed(2)} m/s`} subtitle="Variability" color="indigo" />
+        <MetricCard title="Min" value={`${windStats.min.toFixed(2)} m/s`} subtitle="Minimum" color="purple" />
+        <MetricCard title="Max" value={`${windStats.max.toFixed(2)} m/s`} subtitle="Maximum" color="blue" />
+      </div>
+
+      {/* Histogram */}
+      <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+        <div className="h-80">
+          <Bar data={histogramData} options={chartOptions} />
+        </div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Power Curve Tab Component
-const PowerCurveTab = () => (
-  <div className="space-y-6">
-    <h2 className="text-xl font-semibold text-gray-900">Turbine Power Curve</h2>
-    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-      <p className="text-sm text-gray-700">🚧 Coming soon: Power curve analysis</p>
+const PowerCurveTab = ({ powerCurve, loading, onLoad }: any) => {
+  useEffect(() => {
+    if (!powerCurve && !loading) {
+      onLoad();
+    }
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Generating power curve...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!powerCurve || !powerCurve.wind_speed_bins) {
+    return (
+      <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
+        <p className="text-sm text-gray-700">No power curve data available</p>
+      </div>
+    );
+  }
+
+  // Prepare scatter plot data
+  const scatterData = {
+    labels: powerCurve.wind_speed_bins,
+    datasets: [
+      {
+        label: 'Average Power',
+        data: powerCurve.wind_speed_bins.map((ws: number, idx: number) => ({
+          x: ws,
+          y: powerCurve.avg_power_per_bin[idx] || 0
+        })),
+        backgroundColor: 'rgba(14, 165, 233, 0.7)',
+        borderColor: 'rgba(14, 165, 233, 1)',
+        pointRadius: 5,
+        showLine: true,
+        borderWidth: 2,
+      },
+    ],
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: true },
+      title: {
+        display: true,
+        text: 'Turbine Power Curve',
+        font: { size: 14, weight: 'bold' as const }
+      }
+    },
+    scales: {
+      x: { title: { display: true, text: 'Wind Speed (m/s)' } },
+      y: { title: { display: true, text: 'Power (kW)' }, beginAtZero: true }
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-semibold text-gray-900">Turbine Power Curve</h2>
+      
+      {/* Power Curve Chart */}
+      <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+        <div className="h-96">
+          <Bar data={scatterData} options={chartOptions} />
+        </div>
+      </div>
+
+      {/* Statistics */}
+      <div className="grid grid-cols-3 gap-4">
+        <MetricCard 
+          title="Bins" 
+          value={powerCurve.wind_speed_bins.length.toString()} 
+          subtitle="Data Points" 
+          color="blue" 
+        />
+        <MetricCard 
+          title="Max Power" 
+          value={`${Math.max(...powerCurve.avg_power_per_bin.filter((p: number) => p !== null)).toFixed(0)} kW`} 
+          subtitle="Peak Output" 
+          color="cyan" 
+        />
+        <MetricCard 
+          title="Total Samples" 
+          value={powerCurve.count_per_bin.reduce((a: number, b: number) => a + b, 0).toLocaleString()} 
+          subtitle="Observations" 
+          color="indigo" 
+        />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Energy Analysis Tab Component
-const EnergyAnalysisTab = () => (
-  <div className="space-y-6">
-    <h2 className="text-xl font-semibold text-gray-900">Energy Production Analysis</h2>
-    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-      <p className="text-sm text-gray-700">🚧 Coming soon: Monthly energy and capacity factor</p>
+const EnergyAnalysisTab = ({ monthlyEnergy, capacityFactor, loading, onLoadMonthly, onLoadCapacity }: any) => {
+  useEffect(() => {
+    if (!monthlyEnergy && !loading) {
+      onLoadMonthly();
+    }
+    if (!capacityFactor && !loading) {
+      onLoadCapacity();
+    }
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Computing energy metrics...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Prepare monthly energy chart data
+  const monthlyChartData = monthlyEnergy ? {
+    labels: monthlyEnergy.monthly_data.map((d: any) => d.month),
+    datasets: [
+      {
+        label: 'Monthly Energy (MWh)',
+        data: monthlyEnergy.monthly_data.map((d: any) => d.energy),
+        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+        borderColor: 'rgba(59, 130, 246, 1)',
+        borderWidth: 1,
+      },
+    ],
+  } : null;
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: true },
+      title: {
+        display: true,
+        text: 'Monthly Energy Production',
+        font: { size: 14, weight: 'bold' as const }
+      }
+    },
+    scales: {
+      x: { title: { display: true, text: 'Month' } },
+      y: { title: { display: true, text: 'Energy (MWh)' }, beginAtZero: true }
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-semibold text-gray-900">Energy Production Analysis</h2>
+      
+      {/* Capacity Factor Card */}
+      {capacityFactor && (
+        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-6 border border-blue-200">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-blue-600 mb-1">
+                {capacityFactor.capacity_factor.toFixed(2)}%
+              </div>
+              <div className="text-sm text-gray-600">Capacity Factor</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-cyan-600 mb-1">
+                {capacityFactor.actual_energy_mwh.toFixed(1)} MWh
+              </div>
+              <div className="text-sm text-gray-600">Actual Energy</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-indigo-600 mb-1">
+                {capacityFactor.theoretical_energy_mwh.toFixed(1)} MWh
+              </div>
+              <div className="text-sm text-gray-600">Theoretical Energy</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Monthly Energy Chart */}
+      {monthlyChartData && (
+        <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+          <div className="h-80">
+            <Bar data={monthlyChartData} options={chartOptions} />
+          </div>
+        </div>
+      )}
+
+      {/* Monthly Data Table */}
+      {monthlyEnergy && (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Month</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Energy (MWh)</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Days</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Avg Daily (MWh)</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200 text-sm">
+                {monthlyEnergy.monthly_data.map((row: any, idx: number) => (
+                  <tr key={idx} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 font-medium text-gray-900">{row.month}</td>
+                    <td className="px-6 py-4 text-gray-700">{row.energy.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-gray-700">{row.days}</td>
+                    <td className="px-6 py-4 text-gray-700">{row.avg_daily.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {!monthlyEnergy && !capacityFactor && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
+          <p className="text-sm text-gray-700">No energy analysis data available</p>
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 // AEP Analysis Tab Component (detailed version of dashboard)
 const AEPAnalysisTab = ({ data, stats, histogramData, chartOptions }: any) => (
