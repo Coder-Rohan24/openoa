@@ -12,12 +12,16 @@ from typing import List
 
 import pandas as pd
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, UploadFile, HTTPException, status
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from services.openoa_services import run_aep_analysis
+from services.data_quality import generate_data_quality_summary
+from services.wind_analysis import compute_wind_statistics, compute_weibull_fit
+from services.energy_analysis import compute_monthly_energy, calculate_capacity_factor
+from services.power_curve_analysis import generate_power_curve
 
 # Load environment variables (.env.local takes precedence over .env)
 env_local = Path(__file__).parent / '.env.local'
@@ -196,6 +200,190 @@ async def analyze(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred"
+        )
+
+
+@app.post("/analyze/data-quality")
+async def analyze_data_quality(
+    scada_file: UploadFile = File(..., description="SCADA data file (CSV)"),
+    meter_file: UploadFile = File(..., description="Meter data file (CSV)")
+):
+    """
+    Analyze data quality for both SCADA and meter datasets.
+    
+    Returns comprehensive quality metrics including completeness, missing values,
+    time coverage, and overall quality scores.
+    """
+    logger.info(f"Data quality analysis requested")
+    
+    try:
+        # Read and parse files
+        scada_content = await scada_file.read()
+        meter_content = await meter_file.read()
+        
+        scada_df = pd.read_csv(BytesIO(scada_content))
+        meter_df = pd.read_csv(BytesIO(meter_content))
+        
+        logger.info(f"Files loaded - SCADA: {len(scada_df)} rows, Meter: {len(meter_df)} rows")
+        
+        # Run analysis
+        result = generate_data_quality_summary(scada_df, meter_df)
+        logger.info(f"Data quality analysis completed - Score: {result.get('overall_quality_score', 'N/A')}")
+        
+        return result
+    
+    except Exception as e:
+        logger.error(f"Data quality analysis error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Data quality analysis failed: {str(e)}"
+        )
+
+
+@app.post("/analyze/wind-statistics")
+async def analyze_wind_statistics(
+    scada_file: UploadFile = File(..., description="SCADA data file (CSV)")
+):
+    """
+    Compute wind resource statistics from SCADA data.
+    
+    Returns mean, median, std dev, and histogram data for wind speed distribution.
+    """
+    logger.info(f"Wind statistics analysis requested")
+    
+    try:
+        scada_content = await scada_file.read()
+        scada_df = pd.read_csv(BytesIO(scada_content))
+        
+        logger.info(f"SCADA file loaded - {len(scada_df)} rows")
+        
+        result = compute_wind_statistics(scada_df)
+        logger.info(f"Wind statistics computed - Mean: {result.get('mean', 'N/A'):.2f} m/s")
+        
+        return result
+    
+    except Exception as e:
+        logger.error(f"Wind statistics error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Wind statistics analysis failed: {str(e)}"
+        )
+
+
+@app.post("/analyze/weibull")
+async def analyze_weibull(
+    scada_file: UploadFile = File(..., description="SCADA data file (CSV)")
+):
+    """
+    Compute Weibull distribution parameters for wind resource.
+    
+    Returns shape (k) and scale (c) parameters for Weibull distribution fitting.
+    """
+    logger.info(f"Weibull distribution analysis requested")
+    
+    try:
+        scada_content = await scada_file.read()
+        scada_df = pd.read_csv(BytesIO(scada_content))
+        
+        result = compute_weibull_fit(scada_df)
+        logger.info(f"Weibull fit completed - k={result.get('shape_k', 'N/A'):.2f}, c={result.get('scale_c', 'N/A'):.2f}")
+        
+        return result
+    
+    except Exception as e:
+        logger.error(f"Weibull analysis error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Weibull analysis failed: {str(e)}"
+        )
+
+
+@app.post("/analyze/power-curve")
+async def analyze_power_curve(
+    scada_file: UploadFile = File(..., description="SCADA data file (CSV)")
+):
+    """
+    Generate turbine power curve from SCADA data.
+    
+    Returns binned power curve data showing wind speed to power relationship.
+    """
+    logger.info(f"Power curve generation requested")
+    
+    try:
+        scada_content = await scada_file.read()
+        scada_df = pd.read_csv(BytesIO(scada_content))
+        
+        result = generate_power_curve(scada_df)
+        logger.info(f"Power curve generated with {len(result.get('wind_speed_bins', []))} bins")
+        
+        return result
+    
+    except Exception as e:
+        logger.error(f"Power curve error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Power curve generation failed: {str(e)}"
+        )
+
+
+@app.post("/analyze/monthly-energy")
+async def analyze_monthly_energy(
+    meter_file: UploadFile = File(..., description="Meter data file (CSV)")
+):
+    """
+    Calculate monthly energy production from meter data.
+    
+    Returns time series of monthly energy totals and daily averages.
+    """
+    logger.info(f"Monthly energy analysis requested")
+    
+    try:
+        meter_content = await meter_file.read()
+        meter_df = pd.read_csv(BytesIO(meter_content))
+        
+        result = compute_monthly_energy(meter_df)
+        logger.info(f"Monthly energy computed for {len(result)} months")
+        
+        return {"monthly_data": result}
+    
+    except Exception as e:
+        logger.error(f"Monthly energy error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Monthly energy analysis failed: {str(e)}"
+        )
+
+
+@app.post("/analyze/capacity-factor")
+async def analyze_capacity_factor(
+    meter_file: UploadFile = File(..., description="Meter data file (CSV)"),
+    rated_capacity: float = Form(2000.0)
+):
+    """
+    Calculate capacity factor from meter data.
+    
+    Args:
+        meter_file: Meter data CSV
+        rated_capacity: Rated capacity in kW (default: 2000 kW for typical 2MW turbine)
+    
+    Returns capacity factor percentage and energy metrics.
+    """
+    logger.info(f"Capacity factor analysis requested - Rated: {rated_capacity} kW")
+    
+    try:
+        meter_content = await meter_file.read()
+        meter_df = pd.read_csv(BytesIO(meter_content))
+        
+        result = calculate_capacity_factor(meter_df, rated_capacity)
+        logger.info(f"Capacity factor: {result.get('capacity_factor', 'N/A'):.2f}%")
+        
+        return result
+    
+    except Exception as e:
+        logger.error(f"Capacity factor error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Capacity factor analysis failed: {str(e)}"
         )
 
 
