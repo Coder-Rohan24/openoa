@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { HiOutlineBolt } from 'react-icons/hi2';
+import { HiOutlineBolt, HiOutlineChartBar, HiOutlineClock, HiOutlineBeaker } from 'react-icons/hi2';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 import FileUploadBox from '../components/FileUploadBox';
-import MonteCarloConfig from '../components/MonteCarloConfig';
-import InfoCard from '../components/InfoCard';
 import AlertMessage from '../components/AlertMessage';
 import { useFormValidation } from '../hooks/useFormValidation';
 
@@ -100,79 +98,138 @@ const Home = () => {
   };
 
   return (
-    <div className="space-y-10">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white page-transition">
       {/* Hero Section */}
-      <div className="bg-white rounded-xl shadow-xl p-10 text-center border border-gray-100">
-        <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-deep-blue to-teal mb-5">
-          Wind Plant Performance Analysis
-        </h1>
-        <p className="text-gray-700 text-lg max-w-3xl mx-auto leading-relaxed">
-          Upload your SCADA and meter data to perform comprehensive Annual Energy 
-          Production (AEP) analysis using industry-standard OpenOA methodology.
-        </p>
+      <div className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-16 animate-slideInFromTop">
+        <div className="max-w-4xl mx-auto px-6 text-center">
+          <h1 className="text-5xl font-bold mb-4 animate-fadeIn">
+            Wind Plant Performance Analysis
+          </h1>
+          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto animate-fadeIn delay-100">
+            Upload your SCADA and meter data to perform comprehensive Annual Energy Production analysis using OpenOA
+          </p>
+          <button
+            onClick={() => document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' })}
+            className="inline-flex items-center gap-2 bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 hover:shadow-xl hover:-translate-y-0.5 transition-all shadow-lg animate-fadeIn delay-200"
+          >
+            <HiOutlineBolt className="w-5 h-5" />
+            Start Analysis
+          </button>
+        </div>
       </div>
 
-      {/* Upload Section */}
-      <div className="bg-white rounded-xl shadow-xl p-8 max-w-4xl mx-auto border border-gray-100">
-        <h2 className="text-3xl font-bold text-deep-blue mb-8">
-          Upload Data Files
-        </h2>
-
-        {/* Success Display */}
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-6 py-12 animate-fadeIn delay-100">
+        {/* Success/Error Messages */}
         {success && (
-          <AlertMessage 
-            type="success" 
-            message="Analysis complete! Redirecting to results..." 
-          />
+          <div className="mb-8">
+            <AlertMessage 
+              type="success" 
+              message="Analysis complete! Redirecting to results..." 
+            />
+          </div>
         )}
 
-        {/* Error Display */}
         {error && (
-          <AlertMessage 
-            type="error" 
-            message={error} 
-          />
+          <div className="mb-8">
+            <AlertMessage 
+              type="error" 
+              message={error} 
+            />
+          </div>
         )}
 
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* SCADA Upload Box */}
-          <FileUploadBox
-            file={scadaFile}
-            onFileChange={handleScadaFileChange}
-            label="SCADA Data"
-            disabled={loading}
-          />
+        {/* Upload Section */}
+        <div id="upload-section" className="mb-16">
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Upload Data Files</h2>
+          <p className="text-gray-600 mb-8">Upload SCADA and meter data files in CSV format</p>
           
-          {/* Meter Upload Box */}
-          <FileUploadBox
-            file={meterFile}
-            onFileChange={handleMeterFileChange}
-            label="Meter Data"
-            disabled={loading}
-          />
+          <div className="grid md:grid-cols-2 gap-6 mb-12">
+            <FileUploadBox
+              file={scadaFile}
+              onFileChange={handleScadaFileChange}
+              label="SCADA Data"
+              disabled={loading}
+            />
+            
+            <FileUploadBox
+              file={meterFile}
+              onFileChange={handleMeterFileChange}
+              label="Meter Data"
+              disabled={loading}
+            />
+          </div>
         </div>
-        
-        {/* Monte Carlo Configuration */}
-        <MonteCarloConfig
-          numSimulations={numSimulations}
-          ratedCapacity={ratedCapacity}
-          confidenceLevel={confidenceLevel}
-          onNumSimulationsChange={setNumSimulations}
-          onRatedCapacityChange={setRatedCapacity}
-          onConfidenceLevelChange={setConfidenceLevel}
-          disabled={loading}
-        />
-        
-        {/* Analyze Button */}
-        <div className="mt-8">
+
+        {/* Configuration Section */}
+        <div className="mb-16">
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Analysis Configuration</h2>
+          <p className="text-gray-600 mb-8">Customize Monte Carlo simulation parameters</p>
+          
+          <div className="grid md:grid-cols-3 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Number of Simulations
+              </label>
+              <input
+                type="number"
+                value={numSimulations}
+                onChange={(e) => setNumSimulations(parseInt(e.target.value) || 50)}
+                min="50"
+                max="10000"
+                step="50"
+                disabled={loading}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
+              <p className="text-xs text-gray-500 mt-1">Range: 50 - 10,000</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Rated Capacity (kW)
+              </label>
+              <input
+                type="number"
+                value={ratedCapacity}
+                onChange={(e) => setRatedCapacity(parseInt(e.target.value) || 2000)}
+                min="500"
+                max="10000"
+                step="100"
+                disabled={loading}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
+              <p className="text-xs text-gray-500 mt-1">Turbine rated capacity</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Confidence Level (%)
+              </label>
+              <input
+                type="number"
+                value={confidenceLevel}
+                onChange={(e) => setConfidenceLevel(parseInt(e.target.value) || 90)}
+                min="80"
+                max="99"
+                step="1"
+                disabled={loading}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
+              <p className="text-xs text-gray-500 mt-1">Typically 90% or 95%</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <div className="mb-16">
           <button
             onClick={handleAnalyze}
             disabled={loading || !scadaFile || !meterFile}
-            className="w-full bg-gradient-to-r from-deep-blue to-teal hover:from-deep-blue/90 hover:to-teal/90 text-white font-bold py-4 px-8 rounded-xl shadow-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-2xl disabled:bg-gradient-to-r disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center text-lg"
+            className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold py-4 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-1 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none flex items-center justify-center text-lg"
           >
             {loading ? (
               <>
-                <AiOutlineLoading3Quarters className="animate-spin -ml-1 mr-3 h-6 w-6" />
+                <AiOutlineLoading3Quarters className="animate-spin mr-3 h-6 w-6" />
                 Running Monte Carlo Simulation ({numSimulations} iterations)...
               </>
             ) : (
@@ -182,33 +239,39 @@ const Home = () => {
               </>
             )}
           </button>
-          {!scadaFile || !meterFile ? (
+          {!scadaFile || !meterFile && (
             <p className="text-sm text-gray-500 text-center mt-3">
               Please upload both SCADA and meter files to continue
             </p>
-          ) : null}
+          )}
         </div>
-      </div>
 
-      {/* Info Cards */}
-      <div className="grid md:grid-cols-3 gap-8">
-        <InfoCard
-          icon="chart"
-          title="Monte Carlo Analysis"
-          description="Statistical simulation to quantify uncertainty in AEP estimates."
-        />
-        
-        <InfoCard
-          icon="lightning"
-          title="Industry Standard"
-          description="Built on OpenOA, the open-source standard for wind analysis."
-        />
-        
-        <InfoCard
-          icon="clock"
-          title="Fast Results"
-          description="Cloud-optimized processing for quick turnaround times."
-        />
+        {/* Feature Cards */}
+        <div className="grid md:grid-cols-3 gap-8">
+          <div className="text-center p-6 hover-lift rounded-lg hover:bg-white cursor-default">
+            <div className="w-12 h-12 mx-auto mb-4 rounded-lg bg-blue-100 flex items-center justify-center transition-transform hover:scale-110">
+              <HiOutlineChartBar className="w-6 h-6 text-blue-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Monte Carlo Analysis</h3>
+            <p className="text-gray-600 text-sm">Statistical simulation to quantify uncertainty in AEP estimates</p>
+          </div>
+
+          <div className="text-center p-6 hover-lift rounded-lg hover:bg-white cursor-default">
+            <div className="w-12 h-12 mx-auto mb-4 rounded-lg bg-cyan-100 flex items-center justify-center transition-transform hover:scale-110">
+              <HiOutlineBeaker className="w-6 h-6 text-cyan-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Industry Standard</h3>
+            <p className="text-gray-600 text-sm">Built on OpenOA, the open-source standard for wind analysis</p>
+          </div>
+
+          <div className="text-center p-6 hover-lift rounded-lg hover:bg-white cursor-default">
+            <div className="w-12 h-12 mx-auto mb-4 rounded-lg bg-purple-100 flex items-center justify-center transition-transform hover:scale-110">
+              <HiOutlineClock className="w-6 h-6 text-purple-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Fast Results</h3>
+            <p className="text-gray-600 text-sm">Cloud-optimized processing for quick turnaround times</p>
+          </div>
+        </div>
       </div>
     </div>
   );

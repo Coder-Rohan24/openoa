@@ -44,14 +44,14 @@ const FileUploadBox = ({
       onClick={() => !disabled && inputRef.current?.click()}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      className={`border-2 border-dashed rounded-xl p-10 text-center transition-all duration-300 transform hover:scale-[1.02] ${
+      className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 hover-lift ${
         disabled 
           ? 'cursor-not-allowed opacity-50' 
-          : 'cursor-pointer'
+          : 'cursor-pointer hover:border-blue-400 hover:bg-blue-50/50'
       } ${
         file 
-          ? 'border-teal bg-gradient-to-br from-teal/5 to-teal/10 shadow-lg' 
-          : 'border-gray-300 hover:border-teal hover:shadow-lg'
+          ? 'border-blue-500 bg-blue-50' 
+          : 'border-gray-300'
       }`}
     >
       <input
@@ -62,16 +62,16 @@ const FileUploadBox = ({
         disabled={disabled}
         className="hidden"
       />
-      <div className="text-teal mb-3">
-        <HiOutlineCloudArrowUp className="w-14 h-14 mx-auto" />
+      <div className={`mb-3 ${file ? 'text-blue-600' : 'text-gray-400'}`}>
+        <HiOutlineCloudArrowUp className="w-12 h-12 mx-auto" />
       </div>
-      <h3 className="font-bold text-gray-800 mb-2 text-lg">{label}</h3>
+      <h3 className="font-semibold text-gray-900 mb-1">{label}</h3>
       {file ? (
-        <div className="text-sm text-teal font-semibold mt-3 px-3 py-2 bg-white rounded-lg shadow-sm">
+        <div className="text-sm text-blue-600 font-medium mt-2 px-3 py-1.5 bg-white rounded border border-blue-200">
           ✓ {file.name}
         </div>
       ) : (
-        <p className="text-sm text-gray-500 font-medium">Drag & drop or click to upload CSV</p>
+        <p className="text-sm text-gray-500">Drag & drop or click to upload CSV</p>
       )}
     </div>
   );

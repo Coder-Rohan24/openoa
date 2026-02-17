@@ -282,9 +282,9 @@ const Results = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 page-transition">
       {/* Compact Header */}
-      <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+      <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 animate-slideInFromTop">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Wind Plant Analysis</h1>
@@ -294,7 +294,7 @@ const Results = () => {
             {data && (
               <button
                 onClick={handleDownload}
-                className="px-4 py-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white text-sm font-medium rounded-lg transition-all duration-200 flex items-center gap-2 shadow-md"
+                className="px-4 py-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 flex items-center gap-2 shadow-md"
               >
                 <HiOutlineArrowDownTray className="w-4 h-4" />
                 Download JSON
@@ -302,7 +302,7 @@ const Results = () => {
             )}
             <button
               onClick={() => navigate('/')}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-all duration-200 flex items-center gap-2"
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-2"
             >
               <HiOutlineArrowLeft className="w-4 h-4" />
               Back
@@ -315,15 +315,17 @@ const Results = () => {
         <>
           {/* Executive Summary */}
           {summary && (
-            <ExecutiveSummary
+            <div className="animate-fadeIn delay-100">
+              <ExecutiveSummary
               primary={summary.primary}
               secondary={summary.secondary}
               tertiary={summary.tertiary}
-            />
+              />
+            </div>
           )}
 
           {/* Key Performance Indicators */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 animate-fadeIn delay-200">
             <KPICard
               label="P50 AEP"
               value={formatNumber(data.p50)}
@@ -378,7 +380,7 @@ const Results = () => {
           </div>
 
           {/* Tabs Navigation */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden sticky top-4 z-10">
+          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden sticky top-4 z-10 animate-fadeIn delay-300">
             <div className="flex">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
@@ -387,7 +389,7 @@ const Results = () => {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`
-                      flex-1 flex items-center justify-center gap-2 px-4 py-4 text-sm font-medium transition-all duration-300
+                      flex-1 flex items-center justify-center gap-2 px-4 py-4 text-sm font-medium transition-all duration-200
                       ${activeTab === tab.id
                         ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white'
                         : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -404,7 +406,7 @@ const Results = () => {
           </div>
 
           {/* Tab Content */}
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-8 animate-fadeInScale">
             {renderTabContent()}
           </div>
         </>
