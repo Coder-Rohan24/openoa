@@ -5,16 +5,28 @@ Production-ready API for wind plant performance analysis.
 import logging
 import os
 import sys
+from contextlib import asynccontextmanager
 from io import BytesIO
+from pathlib import Path
 from typing import List
 
 import pandas as pd
+from dotenv import load_dotenv
 from fastapi import FastAPI, File, UploadFile, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from services.openoa_services import run_aep_analysis
+
+# Load environment variables (.env.local takes precedence over .env)
+env_local = Path(__file__).parent / '.env.local'
+if env_local.exists():
+    load_dotenv(env_local)
+    print(f"✓ Loaded local environment from .env.local")
+else:
+    load_dotenv()
+    print(f"✓ Loaded environment from .env (or system variables)")
 
 # Environment configuration
 PORT = int(os.getenv("PORT", 8000))
@@ -33,11 +45,33 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Lifespan event handler
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("=" * 60)
+    logger.info("🚀 OpenOA Cloud Analyst API Starting Up")
+    logger.info("=" * 60)
+    logger.info(f"Environment: {ENVIRONMENT}")
+    logger.info(f"Host: {HOST}")
+    logger.info(f"Port: {PORT}")
+    logger.info(f"Log Level: {LOG_LEVEL}")
+    logger.info(f"CORS: {FRONTEND_URL}")
+    logger.info("=" * 60)
+    logger.info("✅ API Ready to Accept Requests")
+    logger.info("=" * 60)
+    yield
+    # Shutdown
+    logger.info("=" * 60)
+    logger.info("🛑 OpenOA Cloud Analyst API Shutting Down")
+    logger.info("=" * 60)
+
 # Initialize FastAPI app
 app = FastAPI(
     title="OpenOA Cloud Analyst",
     description="API for wind plant performance analysis using OpenOA",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Configure CORS
@@ -190,36 +224,6 @@ async def general_exception_handler(request, exc):
     )
 
 
-# Application startup/shutdown event
-@app.on_event("startup")
-async def startup_event():
-    """
-    Log application startup with configuration details.
-    """
-    logger.info("=" * 60)
-    logger.info("🚀 OpenOA Cloud Analyst API Starting Up")
-    logger.info("=" * 60)
-    logger.info(f"Environment: {ENVIRONMENT}")
-    logger.info(f"Host: {HOST}")
-    logger.info(f"Port: {PORT}")
-    logger.info(f"Log Level: {LOG_LEVEL}")
-    logger.info(f"API Version: {app.version}")
-    logger.info(f"CORS: {FRONTEND_URL}")
-    logger.info("=" * 60)
-    logger.info("✅ API Ready to Accept Requests")
-    logger.info("=" * 60)
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """
-    Log application shutdown.
-    """
-    logger.info("=" * 60)
-    logger.info("🛑 OpenOA Cloud Analyst API Shutting Down")
-    logger.info("=" * 60)
-
-
 if __name__ == "__main__":
     import uvicorn
     
@@ -231,8 +235,8 @@ if __name__ == "__main__":
         "main:app",
         host=HOST,
         port=PORT,
-        reload=(ENVIRONMENT == "development"),
+        reload=False,  # Disabled due to Windows path issues
         log_level=LOG_LEVEL.lower(),
         access_log=True,
-        workers=1 if ENVIRONMENT == "development" else 4
+        workers=1
     )
