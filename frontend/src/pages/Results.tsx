@@ -17,14 +17,12 @@ import KPICard from '../components/KPICard';
 import DashboardTab from '../components/tabs/DashboardTab';
 import DataQualityTab from '../components/tabs/DataQualityTab';
 import WindResourceTab from '../components/tabs/WindResourceTab';
-import PowerCurveTab from '../components/tabs/PowerCurveTab';
 import EnergyAnalysisTab from '../components/tabs/EnergyAnalysisTab';
 import AEPAnalysisTab from '../components/tabs/AEPAnalysisTab';
 import type {
   AnalysisData,
   DataQuality,
   WindStats,
-  PowerCurve,
   MonthlyEnergy,
   CapacityFactor,
   TabName
@@ -62,7 +60,6 @@ const Results = () => {
   // Analysis results
   const [dataQuality, setDataQuality] = useState<DataQuality | null>(null);
   const [windStats, setWindStats] = useState<WindStats | null>(null);
-  const [powerCurve, setPowerCurve] = useState<PowerCurve | null>(null);
   const [monthlyEnergy, setMonthlyEnergy] = useState<MonthlyEnergy | null>(null);
   const [capacityFactor, setCapacityFactor] = useState<CapacityFactor | null>(null);
   
@@ -127,25 +124,6 @@ const Results = () => {
     }
   };
 
-  const fetchPowerCurve = async () => {
-    if (!scadaFile || powerCurve) return;
-    
-    setLoading(prev => ({ ...prev, power: true }));
-    try {
-      const formData = new FormData();
-      formData.append('scada_file', scadaFile);
-      
-      const response = await axios.post(`${API_URL}/analyze/power-curve`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      setPowerCurve(response.data);
-    } catch (error) {
-      console.error('Power curve fetch error:', error);
-    } finally {
-      setLoading(prev => ({ ...prev, power: false }));
-    }
-  };
-
   const fetchMonthlyEnergy = async () => {
     if (!meterFile || monthlyEnergy) return;
     
@@ -190,7 +168,6 @@ const Results = () => {
     { id: 'dashboard' as TabName, name: 'Dashboard', icon: '📊' },
     { id: 'quality' as TabName, name: 'Data Quality', icon: '✓' },
     { id: 'wind' as TabName, name: 'Wind Resource', icon: '🌬️' },
-    { id: 'power' as TabName, name: 'Power Curve', icon: '⚡' },
     { id: 'energy' as TabName, name: 'Energy Analysis', icon: '📈' },
     { id: 'aep' as TabName, name: 'AEP Analysis', icon: '🎯' },
   ];
@@ -207,7 +184,6 @@ const Results = () => {
       aep_analysis: data,
       data_quality: dataQuality,
       wind_statistics: windStats,
-      power_curve: powerCurve,
       monthly_energy: monthlyEnergy,
       capacity_factor: capacityFactor,
       calculated_stats: stats,
@@ -286,8 +262,6 @@ const Results = () => {
         return <DataQualityTab dataQuality={dataQuality} loading={loading.quality} onLoad={fetchDataQuality} />;
       case 'wind':
         return <WindResourceTab windStats={windStats} loading={loading.wind} onLoad={fetchWindStats} />;
-      case 'power':
-        return <PowerCurveTab powerCurve={powerCurve} loading={loading.power} onLoad={fetchPowerCurve} />;
       case 'energy':
         return <EnergyAnalysisTab monthlyEnergy={monthlyEnergy} capacityFactor={capacityFactor} loading={loading.energy} onLoadMonthly={fetchMonthlyEnergy} onLoadCapacity={fetchCapacityFactor} />;
       case 'aep':
@@ -379,7 +353,7 @@ const Results = () => {
             <KPICard
               label="Capacity Factor"
               value={capacityFactor?.capacity_factor 
-                ? (capacityFactor.capacity_factor * 100).toFixed(1) 
+                ? capacityFactor.capacity_factor.toFixed(1) 
                 : 'N/A'}
               unit="%"
               subtext={capacityFactor ? 'Actual' : 'Run Energy tab'}
@@ -387,12 +361,12 @@ const Results = () => {
             />
             
             <KPICard
-              label="Availability"
-              value={dataQuality?.scada?.availability 
-                ? (dataQuality.scada.availability * 100).toFixed(1) 
+              label="Data Quality"
+              value={dataQuality?.overall_quality_score 
+                ? dataQuality.overall_quality_score.toFixed(1) 
                 : 'N/A'}
               unit="%"
-              subtext={dataQuality ? 'SCADA' : 'Run Quality tab'}
+              subtext={dataQuality ? 'Overall' : 'Run Quality tab'}
               color="pink"
             />
           </div>
