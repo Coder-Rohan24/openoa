@@ -249,11 +249,11 @@ This project is licensed under the **MIT License** – see [LICENSE](LICENSE) fi
 
 ## 📧 Contact
 
-**Project Maintainer** – [Your Name](mailto:your.email@example.com)
+**Project Maintainer** – [Anirban Halder](mailto:halder.anirban@gmail.com)
 
-**Live Demo** – [openoa-website.vercel.app](https://openoa-website.vercel.app)
+**Live Demo** – [openoa-website.vercel.app](https://openoa-kfit.vercel.app/)
 
-**Issues** – [GitHub Issues](https://github.com/yourusername/openoa-website/issues)
+**Issues** – [GitHub Issues](https://github.com/Coder-Rohan24/openoa/issues)
 
 ---
 
