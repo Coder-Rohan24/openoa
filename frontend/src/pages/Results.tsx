@@ -1,6 +1,16 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { 
+  HiOutlineArrowDownTray, 
+  HiOutlineArrowLeft, 
+  HiOutlineChartBar,
+  HiOutlineChartBarSquare,
+  HiOutlineShieldCheck,
+  HiOutlineCloud,
+  HiOutlinePresentationChartLine,
+  HiOutlineBeaker
+} from 'react-icons/hi2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -165,11 +175,11 @@ const Results = () => {
 
   // Tab configurations
   const tabs = [
-    { id: 'dashboard' as TabName, name: 'Dashboard', icon: '📊' },
-    { id: 'quality' as TabName, name: 'Data Quality', icon: '✓' },
-    { id: 'wind' as TabName, name: 'Wind Resource', icon: '🌬️' },
-    { id: 'energy' as TabName, name: 'Energy Analysis', icon: '📈' },
-    { id: 'aep' as TabName, name: 'AEP Analysis', icon: '🎯' },
+    { id: 'dashboard' as TabName, name: 'Dashboard', icon: HiOutlineChartBarSquare, color: 'text-blue-500' },
+    { id: 'quality' as TabName, name: 'Data Quality', icon: HiOutlineShieldCheck, color: 'text-green-500' },
+    { id: 'wind' as TabName, name: 'Wind Resource', icon: HiOutlineCloud, color: 'text-cyan-500' },
+    { id: 'energy' as TabName, name: 'Energy Analysis', icon: HiOutlinePresentationChartLine, color: 'text-purple-500' },
+    { id: 'aep' as TabName, name: 'AEP Analysis', icon: HiOutlineBeaker, color: 'text-amber-500' },
   ];
 
   // Use imported helper functions
@@ -286,9 +296,7 @@ const Results = () => {
                 onClick={handleDownload}
                 className="px-4 py-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white text-sm font-medium rounded-lg transition-all duration-200 flex items-center gap-2 shadow-md"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+                <HiOutlineArrowDownTray className="w-4 h-4" />
                 Download JSON
               </button>
             )}
@@ -296,9 +304,7 @@ const Results = () => {
               onClick={() => navigate('/')}
               className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-all duration-200 flex items-center gap-2"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
+              <HiOutlineArrowLeft className="w-4 h-4" />
               Back
             </button>
           </div>
@@ -373,27 +379,27 @@ const Results = () => {
 
           {/* Tabs Navigation */}
           <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden sticky top-4 z-10">
-            <div className="flex overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`
-                    flex items-center gap-2 px-6 py-4 text-sm font-medium whitespace-nowrap transition-all duration-300 relative
-                    ${activeTab === tab.id
-                      ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md'
-                      : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }
-                    border-r border-gray-200 last:border-r-0
-                  `}
-                >
-                  <span className="text-lg">{tab.icon}</span>
-                  <span>{tab.name}</span>
-                  {activeTab === tab.id && (
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-white"></div>
-                  )}
-                </button>
-              ))}
+            <div className="flex">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`
+                      flex-1 flex items-center justify-center gap-2 px-4 py-4 text-sm font-medium transition-all duration-300
+                      ${activeTab === tab.id
+                        ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }
+                      border-r border-gray-200 last:border-r-0
+                    `}
+                  >
+                    <Icon className={`w-5 h-5 ${activeTab === tab.id ? 'text-white' : tab.color}`} />
+                    <span>{tab.name}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -404,9 +410,7 @@ const Results = () => {
         </>
       ) : (
         <div className="bg-white rounded-lg shadow-md p-12 border border-gray-200 text-center">
-          <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
+          <HiOutlineChartBar className="w-16 h-16 mx-auto mb-4 text-gray-300" />
           <h2 className="text-xl font-semibold text-gray-800 mb-2">No Analysis Data</h2>
           <p className="text-sm text-gray-600 mb-6">Run an analysis from the home page to view results.</p>
           <button
