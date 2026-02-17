@@ -46,6 +46,7 @@ const Home = () => {
       const formData = new FormData();
       formData.append('scada_file', scadaFile!);
       formData.append('meter_file', meterFile!);
+      formData.append('num_simulations', numSimulations.toString());
 
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       const response = await axios.post(`${apiUrl}/analyze`, formData, {
