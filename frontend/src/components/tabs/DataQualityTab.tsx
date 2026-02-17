@@ -35,7 +35,9 @@ const DataQualityTab = ({ dataQuality, loading, onLoad }: DataQualityTabProps) =
       <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-6 border border-blue-200">
         <div className="text-center">
           <div className="text-4xl font-bold text-blue-600 mb-2">
-            {(dataQuality.overall_quality_score * 100).toFixed(1)}%
+            {dataQuality.overall_quality_score != null 
+              ? dataQuality.overall_quality_score.toFixed(1) 
+              : 'N/A'}%
           </div>
           <div className="text-sm text-gray-600">Overall Quality Score</div>
         </div>
@@ -46,19 +48,31 @@ const DataQualityTab = ({ dataQuality, loading, onLoad }: DataQualityTabProps) =
         <h3 className="text-lg font-semibold text-gray-800 mb-4">SCADA Data Quality</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
-            <div className="text-2xl font-bold text-gray-900">{dataQuality.scada.total_rows.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {dataQuality.scada?.total_rows?.toLocaleString() || 'N/A'}
+            </div>
             <div className="text-xs text-gray-600">Total Rows</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-gray-900">{dataQuality.scada.days_coverage.toFixed(1)}</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {dataQuality.scada?.time_coverage_days != null 
+                ? dataQuality.scada.time_coverage_days.toFixed(1) 
+                : 'N/A'}
+            </div>
             <div className="text-xs text-gray-600">Days Coverage</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-gray-900">{dataQuality.scada.duplicate_rows.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {dataQuality.scada?.duplicate_timestamps?.toLocaleString() || 'N/A'}
+            </div>
             <div className="text-xs text-gray-600">Duplicates</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-gray-900">{(dataQuality.scada.completeness * 100).toFixed(1)}%</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {dataQuality.scada?.completeness_score != null 
+                ? dataQuality.scada.completeness_score.toFixed(1) 
+                : 'N/A'}%
+            </div>
             <div className="text-xs text-gray-600">Completeness</div>
           </div>
         </div>
@@ -69,19 +83,31 @@ const DataQualityTab = ({ dataQuality, loading, onLoad }: DataQualityTabProps) =
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Meter Data Quality</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
-            <div className="text-2xl font-bold text-gray-900">{dataQuality.meter.total_rows.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {dataQuality.meter?.total_rows?.toLocaleString() || 'N/A'}
+            </div>
             <div className="text-xs text-gray-600">Total Rows</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-gray-900">{dataQuality.meter.days_coverage.toFixed(1)}</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {dataQuality.meter?.time_coverage_days != null 
+                ? dataQuality.meter.time_coverage_days.toFixed(1) 
+                : 'N/A'}
+            </div>
             <div className="text-xs text-gray-600">Days Coverage</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-gray-900">{dataQuality.meter.duplicate_rows.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {dataQuality.meter?.duplicate_timestamps?.toLocaleString() || 'N/A'}
+            </div>
             <div className="text-xs text-gray-600">Duplicates</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-gray-900">{(dataQuality.meter.completeness * 100).toFixed(1)}%</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {dataQuality.meter?.completeness_score != null 
+                ? dataQuality.meter.completeness_score.toFixed(1) 
+                : 'N/A'}%
+            </div>
             <div className="text-xs text-gray-600">Completeness</div>
           </div>
         </div>

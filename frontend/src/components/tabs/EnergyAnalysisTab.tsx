@@ -69,15 +69,27 @@ const EnergyAnalysisTab = ({
         <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-6 border border-blue-200">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600">{(capacityFactor.capacity_factor * 100).toFixed(2)}%</div>
+              <div className="text-3xl font-bold text-blue-600">
+                {capacityFactor.capacity_factor != null 
+                  ? capacityFactor.capacity_factor.toFixed(2) 
+                  : 'N/A'}%
+              </div>
               <div className="text-sm text-gray-600 mt-1">Capacity Factor</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600">{capacityFactor.actual_energy_mwh.toFixed(2)} MWh</div>
+              <div className="text-3xl font-bold text-blue-600">
+                {capacityFactor.actual_energy_mwh != null 
+                  ? capacityFactor.actual_energy_mwh.toFixed(2) 
+                  : 'N/A'} MWh
+              </div>
               <div className="text-sm text-gray-600 mt-1">Actual Energy</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600">{capacityFactor.duration_days.toFixed(1)} days</div>
+              <div className="text-3xl font-bold text-blue-600">
+                {capacityFactor.duration_days != null 
+                  ? capacityFactor.duration_days.toFixed(1) 
+                  : 'N/A'} days
+              </div>
               <div className="text-sm text-gray-600 mt-1">Analysis Period</div>
             </div>
           </div>
@@ -109,10 +121,10 @@ const EnergyAnalysisTab = ({
               <tbody className="bg-white divide-y divide-gray-200">
                 {monthlyEnergy.monthly_data.map((row, idx) => (
                   <tr key={idx} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{row.month}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{row.energy.toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{row.days}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{row.avg_daily.toFixed(2)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{row.month || 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{row.energy != null ? row.energy.toFixed(2) : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{row.days || 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{row.avg_daily != null ? row.avg_daily.toFixed(2) : 'N/A'}</td>
                   </tr>
                 ))}
               </tbody>

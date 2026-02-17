@@ -80,7 +80,7 @@ export const generateExecutiveSummary = (
     primary: `The wind plant is projected to produce ${p50.toLocaleString()} MWh annually at P50 confidence level.`,
     secondary: `Monte Carlo simulation with ${stats.count.toLocaleString()} iterations indicates P90 exceedance of ${p90.toLocaleString()} MWh (${ratio}% of P50). Production uncertainty is ±${uncertainty}%.`,
     tertiary: dataQualityScore 
-      ? `Data quality score: ${(dataQualityScore * 100).toFixed(1)}%` 
+      ? `Data quality score: ${dataQualityScore.toFixed(1)}%` 
       : 'Run data quality analysis for additional insights.'
   };
 };
