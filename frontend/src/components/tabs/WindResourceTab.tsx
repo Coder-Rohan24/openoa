@@ -68,11 +68,11 @@ const WindResourceTab = ({ windStats, loading, onLoad }: WindResourceTabProps) =
       
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <MetricCard title="Mean" value={`${windStats.mean.toFixed(2)} m/s`} subtitle="Average" color="blue" />
-        <MetricCard title="Median" value={`${windStats.median.toFixed(2)} m/s`} subtitle="50th Percentile" color="cyan" />
-        <MetricCard title="Std Dev" value={`${windStats.std.toFixed(2)} m/s`} subtitle="Variability" color="indigo" />
-        <MetricCard title="Min" value={`${windStats.min.toFixed(2)} m/s`} subtitle="Minimum" color="purple" />
-        <MetricCard title="Max" value={`${windStats.max.toFixed(2)} m/s`} subtitle="Maximum" color="blue" />
+        <MetricCard title="Mean" value={windStats.mean != null ? `${windStats.mean.toFixed(2)} m/s` : 'N/A'} subtitle="Average" color="blue" />
+        <MetricCard title="Median" value={windStats.median != null ? `${windStats.median.toFixed(2)} m/s` : 'N/A'} subtitle="50th Percentile" color="cyan" />
+        <MetricCard title="Std Dev" value={windStats.std != null ? `${windStats.std.toFixed(2)} m/s` : 'N/A'} subtitle="Variability" color="indigo" />
+        <MetricCard title="Min" value={windStats.min != null ? `${windStats.min.toFixed(2)} m/s` : 'N/A'} subtitle="Minimum" color="purple" />
+        <MetricCard title="Max" value={windStats.max != null ? `${windStats.max.toFixed(2)} m/s` : 'N/A'} subtitle="Maximum" color="blue" />
       </div>
 
       {/* Histogram */}
