@@ -7,19 +7,25 @@ export interface AnalysisData {
 export interface DataQuality {
   scada: {
     total_rows: number;
-    missing_values: number;
-    duplicate_rows: number;
-    completeness: number;
-    availability: number;
-    days_coverage: number;
+    total_columns: number;
+    missing_values: Record<string, number>;
+    duplicate_timestamps: number;
+    time_coverage_days: number;
+    start_date: string;
+    end_date: string;
+    inferred_frequency: string;
+    completeness_score: number;
   };
   meter: {
     total_rows: number;
-    missing_values: number;
-    duplicate_rows: number;
-    completeness: number;
-    availability: number;
-    days_coverage: number;
+    total_columns: number;
+    missing_values: Record<string, number>;
+    duplicate_timestamps: number;
+    time_coverage_days: number;
+    start_date: string;
+    end_date: string;
+    inferred_frequency: string;
+    completeness_score: number;
   };
   overall_quality_score: number;
 }
@@ -32,13 +38,6 @@ export interface WindStats {
   max: number;
   histogram_bins: number[];
   histogram_counts: number[];
-}
-
-export interface PowerCurve {
-  wind_speed_bins: number[];
-  avg_power_per_bin: number[];
-  count_per_bin: number[];
-  std_per_bin: number[];
 }
 
 export interface MonthlyEnergy {
@@ -66,4 +65,4 @@ export interface Statistics {
   count: number;
 }
 
-export type TabName = 'dashboard' | 'quality' | 'wind' | 'power' | 'energy' | 'aep';
+export type TabName = 'dashboard' | 'quality' | 'wind' | 'energy' | 'aep';

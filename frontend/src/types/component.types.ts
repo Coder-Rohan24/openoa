@@ -1,4 +1,4 @@
-import type { AnalysisData, Statistics, DataQuality, WindStats, PowerCurve, MonthlyEnergy, CapacityFactor } from './analysis.types';
+import type { AnalysisData, Statistics, DataQuality, WindStats, MonthlyEnergy, CapacityFactor } from './analysis.types';
 
 export interface DashboardTabProps {
   data: AnalysisData;
@@ -15,12 +15,6 @@ export interface DataQualityTabProps {
 
 export interface WindResourceTabProps {
   windStats: WindStats | null;
-  loading: boolean;
-  onLoad: () => void;
-}
-
-export interface PowerCurveTabProps {
-  powerCurve: PowerCurve | null;
   loading: boolean;
   onLoad: () => void;
 }
