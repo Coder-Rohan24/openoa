@@ -103,7 +103,7 @@ def prepare_plant_data(scada_df: pd.DataFrame, meter_df: pd.DataFrame) -> PlantD
         raise
 
 
-def run_aep_analysis(scada_df: pd.DataFrame, meter_df: pd.DataFrame) -> Dict[str, any]:
+def run_aep_analysis(scada_df: pd.DataFrame, meter_df: pd.DataFrame, num_simulations: int = 50) -> Dict[str, any]:
     """
     Run Annual Energy Production (AEP) analysis using OpenOA's MonteCarloAEP.
     
@@ -113,6 +113,7 @@ def run_aep_analysis(scada_df: pd.DataFrame, meter_df: pd.DataFrame) -> Dict[str
     Args:
         scada_df: DataFrame containing SCADA data
         meter_df: DataFrame containing meter data
+        num_simulations: Number of Monte Carlo simulations to run (default: 50)
     
     Returns:
         Dictionary containing:
@@ -332,11 +333,11 @@ def run_aep_analysis(scada_df: pd.DataFrame, meter_df: pd.DataFrame) -> Dict[str
             uncertainty_windiness=uncertainty
         )
         
-        # Run the analysis with 50 simulations
-        logger.info("Running OpenOA Monte Carlo simulation with 50 iterations...")
+        # Run the analysis
+        logger.info(f"Running OpenOA Monte Carlo simulation with {num_simulations} iterations...")
         
         mc_aep.run(
-            num_sim=50,  # Number of Monte Carlo simulations
+            num_sim=num_simulations,  # Number of Monte Carlo simulations
             progress_bar=False  # Disable progress bar for API
         )
         
