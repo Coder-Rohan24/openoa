@@ -126,8 +126,15 @@ def compute_monthly_energy(meter_df: pd.DataFrame) -> List[Dict[str, any]]:
             # Convert kWh to MWh for better readability
             energy_mwh = energy_kwh / 1000.0
             
-            # Get days for this month
-            days = days_per_month.loc[timestamp] if timestamp in days_per_month.index else 0
+            # Get days for this month (ensure it's a scalar value)
+            if timestamp in days_per_month.index:
+                days = days_per_month.loc[timestamp]
+                # Handle case where days might be a Series
+                if isinstance(days, pd.Series):
+                    days = days.iloc[0] if len(days) > 0 else 0
+                days = int(days) if days > 0 else 0
+            else:
+                days = 0
             
             # Calculate average daily energy
             avg_daily = energy_mwh / days if days > 0 else 0
